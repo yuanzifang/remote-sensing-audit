@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>遥感地图审计 — 可疑窗口查看器</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <main class="stage">
+      <!-- 第一层: 全球地图上下文 -->
+      <section class="globe-view" id="globeView">
+        <div id="leafletMap"></div>
+        <div class="globe-search">
+          <input id="searchInput" type="text" placeholder="搜索城市 / 国家：武汉、秘鲁、Tokyo…"
+                 autocomplete="off" spellcheck="false">
+          <button id="searchBtn" title="搜索">🔍</button>
+          <div class="search-results hidden" id="searchResults"></div>
+        </div>
+        <div class="globe-info">
+          <h3>全球位置</h3>
+          <p id="globeInfoMain">秘鲁南部 · 太平洋沿岸山区</p>
+          <p class="dim" id="globeInfoCoords">Dynamic World 测试瓦片 · 16.4°S, 71.8°W · 约 5.1 km × 5.1 km</p>
+          <p class="dim cyan" id="globeInfoHint">搜索或点击地图查询环境 · 点击脉冲标记进入诊断</p>
+        </div>
+        <div class="globe-layers">
+          <span class="gl-title">多源数据融合控制台</span>
+          <select id="engineSel" title="数据源引擎">
+            <option value="local">🌐 Local · 本地演示</option>
+            <option value="gee">🌐 Global · GEE 云端</option>
+            <option value="oge">🌐 Domestic · OGE 国产</option>
+          </select>
+          <span class="gl-sep"></span>
+          <button class="gl-btn active" data-layer="ref" title="国界线与国家/城市名称">🏷️ 地名国界</button>
+          <button class="gl-btn" data-layer="lst" title="NASA GIBS · MODIS Terra 每日地表温度">🔥 地表温度</button>
+          <span class="gl-sep"></span>
+          <button class="gl-btn" id="drawAoiBtn" title="在地图上单击画多边形, 圈定监测范围">✏️ 圈定监测范围</button>
+          <button class="gl-btn gl-go" id="analyzeBtn" hidden>✓ 确认分析</button>
+          <button class="gl-btn gl-danger" id="clearAoiBtn" hidden>✕ 清除</button>
+          <span class="gl-status" id="glStatus"></span>
+        </div>
+        <div class="draw-banner hidden" id="drawBanner"></div>
+      </section>
+
+      <!-- 第二层: 红点诊断视图 -->
+      <section class="map-panel hidden" id="diagView">
+        <button class="back-btn" id="backBtn">← 返回全球地图</button>
+        <div class="map-wrap" id="mapWrap">
+          <img id="baseMap" src="base_map.png" alt="预测底图">
+          <div class="markers" id="markers" aria-label="可疑窗口标记"></div>
+          <div class="map-legend" id="mapLegend">
+            <h4>地物类别</h4>
+            <ul></ul>
+            <p class="ml-ood">⬤ 紫圈 = OOD 分布外窗口</p>
+          </div>
+          <div class="sat-overlay hidden" id="satOverlay">
+            <div id="satelliteMap"></div>
+            <div class="sat-ctrl">
+              <span class="sat-tag">真实卫星影像 · 双击返回分类图</span>
+              <div class="sat-src">
+                <button class="src-btn active" data-src="esri">Esri 高清存档</button>
+                <button class="src-btn" data-src="modis">NASA 当日真彩</button>
+                <input type="date" id="gibsDate" title="MODIS 影像日期 (UTC)">
+                <span class="sat-status" id="satStatus"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="sidebar">
+      <header class="side-head">
+        <h1>可疑窗口诊断</h1>
+        <p class="sub" id="subTitle">Dynamic World · 秘鲁南部瓦片 · 5% 复查集（按可疑度排序）</p>
+      </header>
+
+      <div class="env-card" id="envCard">
+        <h3>🌍 实时环境监测</h3>
+        <div class="env-body" id="envBody">
+          <p class="env-hint">在全球地图上点击任意位置（如武汉、秘鲁），<br>或点击诊断红点，获取 NASA 实时环境数据</p>
+        </div>
+      </div>
+
+      <div class="alert-card" id="alertCard">
+        <h3>🚨 变化检测预警 <span class="sim-badge">模拟演示</span></h3>
+        <div id="alertBody">
+          <p class="env-hint">在全球地图圈定一片区域（✏️ 圈定监测范围），开始变化监测演示</p>
+        </div>
+      </div>
+
+      <div class="zoom-card">
+        <h3>局部放大 · 15×15 邻域</h3>
+        <div class="zoom-box">
+          <canvas id="zoomCanvas" hidden></canvas>
+          <div class="zoom-empty" id="zoomEmpty">点击地图红点<br>查看该窗口周边的预测</div>
+        </div>
+        <p class="zoom-note" id="zoomNote"></p>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <button class="btn" id="top10Btn">显示置信度前十</button>
+
+      <button class="btn" id="uploadBtn" title="推荐: 上传真实概率文件 (.npy 或 GeoTIFF, 如 Google Earth Engine 导出的 Dynamic World 概率); 也可上传分类着色图片(概率将由颜色合成, 仅演示用)">↑ 上传概率图 (.npy/.tif) / 地图图片</button>
+      <input type="file" id="fileInput" accept=".npy,.tif,.tiff,image/png,image/jpeg" hidden>
+
+      <div class="gee-card">
+        <h3>☁️ GEE 实时拉取 <span class="sim-badge" style="color:#34d399;border-color:rgba(52,211,153,.45)">真实数据</span></h3>
+        <div class="gee-form">
+          <label>纬度<input id="geeLat" type="number" step="0.0001" value="-16.41"></label>
+          <label>经度<input id="geeLon" type="number" step="0.0001" value="-71.84"></label>
+          <label>日期<input id="geeDate" type="date" title="留空 = 最近一景"></label>
+          <label>边长km<input id="geeSize" type="number" min="1" max="20" step="0.5" value="6"></label>
+        </div>
+        <button class="btn" id="geeBtn" style="margin-top:10px">拉取 Dynamic World 并审计</button>
+        <p class="env-hint" id="geeStatus" style="margin-top:8px">需先完成一次认证：<code>.venv/bin/earthengine authenticate</code>（要能访问 Google，有代理先设 HTTPS_PROXY）</p>
+      </div>
+
+      <div class="hint-card" id="hintCard">
+        <p>点击左侧地图上的可疑点，查看诊断详情。</p>
+      </div>
+      <div class="detail-card hidden" id="detailCard"></div>
+
+      <div class="corr-card">
+        <h3>🙋 人工修正记录 <span class="lg-total" id="corrTotal"></span></h3>
+        <div id="corrBody"><p class="env-hint">暂无修正记录 · 在诊断详情中提交反馈后显示</p></div>
+      </div>
+
+      <div class="legend">
+        <h3 id="legendTitle">预测类别图例</h3>
+        <ul id="legendList"></ul>
+      </div>
+
+      <footer class="side-foot">
+        数据: olmoearth-inferencex demo · Dynamic World 测试瓦片 (CC BY 4.0, Brown et al. 2022)
+      </footer>
+    </aside>
+  </div>
+
+  <div class="engine-badge local" id="engineBadge">
+    <span class="dot"></span><span id="engineBadgeText">本地测试环境，正在使用秘鲁 Demo 瓦片</span>
+  </div>
+
+  <div class="modal hidden" id="changeModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="cmTitle">地块变化详情</h3>
+        <button id="cmClose" title="关闭">✕</button>
+      </div>
+      <div class="cm-canvases">
+        <div class="cm-item">
+          <canvas id="cmBefore" width="300" height="210"></canvas>
+          <p>历史影像 · 2024-11（示意）</p>
+        </div>
+        <div class="cm-item">
+          <canvas id="cmAfter" width="300" height="210"></canvas>
+          <p>现状影像 · 2026-11（示意）</p>
+        </div>
+      </div>
+      <div class="cm-meta" id="cmMeta"></div>
+      <p class="cm-note">示意图为程序生成的模拟变化，仅用于演示交互流程</p>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          onerror="window.__leafletFailed = true"></script>
+  <script src="script.js"></script>
+</body>
+</html>
