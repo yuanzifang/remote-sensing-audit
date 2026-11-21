@@ -581,8 +581,12 @@ const pref = {
   },
 };
 
+/* ---------- 静态演示模式（GitHub Pages）：跳过依赖本地服务的请求 ---------- */
+const DEMO = location.hostname.endsWith("github.io") || location.protocol === "file:";
+
 /* ---------- 🙋 人工修正记录 ---------- */
 function loadCorrections() {
+  if (DEMO) return;
   fetch("/corrections")
     .then((r) => r.json())
     .then((d) => {
@@ -853,6 +857,7 @@ function windowToLatLng(p) {
 }
 
 function fetchEnv(lat, lon, label) {
+  if (DEMO) return;
   envBodyEl.innerHTML = `<p class="env-hint">查询中… (NASA POWER, 约 2-5 秒)</p>`;
   lastEnvData = null;
   fetch(`/env?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`)

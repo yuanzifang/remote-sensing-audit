@@ -1,0 +1,35 @@
+/* GitHub Pages 静态演示版：隐藏依赖本地 server.py 的能力 */
+#uploadBtn,
+#fileInput,
+.gee-card,
+.corr-card,
+#envCard,
+.alert-card,
+.globe-search,
+.globe-layers,
+.draw-banner,
+#drawAoiBtn {
+  display: none !important;
+}
+
+.demo-note {
+  margin-top: 6px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #7f8b99;
+  border-top: 1px dashed rgba(127, 139, 153, .35);
+  padding-top: 7px;
+}
+
+.demo-note b { color: #9fb0c3; font-weight: 600; }
+
+.demo-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border: 1px solid rgba(56, 189, 248, .45);
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: #38bdf8;
+  vertical-align: 2px;
+}
