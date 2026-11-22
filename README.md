@@ -1,7 +1,17 @@
 # 遥感地图审计 · 可疑窗口查看器
 
+**Remote Sensing Map Audit — Suspicious Window Viewer**
+
+[![Live demo](https://img.shields.io/badge/demo-live-2ea44f)](https://yuanzifang.github.io/remote-sensing-audit/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Python 3.13](https://img.shields.io/badge/python-3.13-3776ab)](https://www.python.org/)
+
+**中文** ｜ [**English README**](README.en.md)
+
 > **在线 Demo**：https://yuanzifang.github.io/remote-sensing-audit/
 > 静态版只保留浏览与诊断；上传、GEE 实时拉取、实时环境需本地运行 `server.py`。
+
+**English** — A label-free audit viewer for remote-sensing classification maps. It ranks the windows most worth human review using boundary and low-confidence cues, explains why each window is flagged, and lets you inspect them on a map. Works with `.npy` / GeoTIFF probability maps, Dynamic World palettes, and Google Earth Engine exports. No ground truth required to answer: *where is this map most likely wrong, and which windows should I check first?*
 
 | 全球定位 | 可疑窗口诊断 |
 | --- | --- |
@@ -23,7 +33,8 @@
 ## 快速开始
 
 ```bash
-git clone <repo-url> && cd remote-sensing-audit
+git clone https://github.com/yuanzifang/remote-sensing-audit.git
+cd remote-sensing-audit
 
 # 依赖（uv 管理，Python 3.13）
 uv venv
@@ -74,3 +85,7 @@ python server.py                            # 上传该 tif 即可审计
 - 图片合成的概率只保证流程可跑通，不能用于评估模型真实表现
 - 上传图最长边会缩到 256，保证浏览器端渲染与审计速度
 - 无真值时只输出「可疑窗口」，不输出准确率；需要准确率请使用带真值的样本与 `estimate`
+
+## License
+
+MIT © 2026 Fang Yuan
